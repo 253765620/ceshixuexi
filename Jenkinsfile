@@ -1,3 +1,5 @@
+def testResult = null
+
 pipeline {
     agent any
 
@@ -31,7 +33,9 @@ pipeline {
         stage('Publish Results') {
             steps {
                 echo 'Publishing test report...'
-                junit 'test-results.xml'
+                script {
+                    testResult = junit 'test-results.xml'
+                }
             }
         }
     }
@@ -40,18 +44,9 @@ pipeline {
         always {
             echo 'Tests finished.'
             script {
-                def total = 'N/A'
-                def passed = 'N/A'
-                def failed = 'N/A'
-                try {
-                    def results = junitTestResults.getTotalCount()
-                    def summary = junitTestResults
-                    total = summary.totalCount
-                    passed = summary.passCount
-                    failed = summary.failCount
-                } catch (e) {
-                    echo 'Could not read test results'
-                }
+                def total = testResult?.totalCount ?: 'N/A'
+                def passed = testResult?.passCount ?: 'N/A'
+                def failed = testResult?.failCount ?: 'N/A'
 
                 def status = currentBuild.result ?: 'SUCCESS'
                 def color = (status == 'SUCCESS') ? 'green' : 'red'
