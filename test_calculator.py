@@ -1,5 +1,5 @@
 import pytest
-from calculator import add, subtract, multiply, divide, is_even
+from calculator import add, subtract, multiply, divide, is_even, power
 
 
 class TestCalculator:
@@ -31,6 +31,15 @@ class TestCalculator:
 
     def test_is_even_false(self):
         assert is_even(5) is False
+
+    def test_power_positive(self):
+        assert power(2, 3) == 8
+
+    def test_power_zero_exp(self):
+        assert power(5, 0) == 1
+
+    def test_power_one(self):
+        assert power(7, 1) == 7
 
     @pytest.mark.parametrize("a,b,expected", [
         (1, 2, 3),

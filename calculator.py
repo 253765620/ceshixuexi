@@ -18,3 +18,7 @@ def divide(a, b):
 
 def is_even(n):
     return n % 2 == 0
+
+
+def power(base, exp):
+    return base ** exp
