@@ -31,6 +31,23 @@ pipeline {
             }
         }
 
+        stage('Parse Results') {
+            steps {
+                echo 'Parsing test results...'
+                script {
+                    def xml = readFile 'test-results.xml'
+                    def total = (xml =~ /tests="(\d+)"/)[0][1]
+                    def failures = (xml =~ /failures="(\d+)"/)[0][1]
+                    def errors = (xml =~ /errors="(\d+)"/)[0][1]
+                    def skipped = (xml =~ /skipped="(\d+)"/)[0][1]
+                    env.TEST_TOTAL = total
+                    env.TEST_FAILED = String.valueOf(failures.toInteger() + errors.toInteger())
+                    env.TEST_PASSED = String.valueOf(total.toInteger() - failures.toInteger() - errors.toInteger() - skipped.toInteger())
+                    echo "Total: ${env.TEST_TOTAL}, Passed: ${env.TEST_PASSED}, Failed: ${env.TEST_FAILED}"
+                }
+            }
+        }
+
         stage('Publish Results') {
             steps {
                 echo 'Publishing test report...'
@@ -43,20 +60,9 @@ pipeline {
         always {
             echo 'Tests finished.'
             script {
-                def total = 'N/A'
-                def passed = 'N/A'
-                def failed = 'N/A'
-                try {
-                    def action = currentBuild.rawBuild.getAction(hudson.tasks.junit.TestResultAction.class)
-                    if (action != null) {
-                        total = action.totalCount
-                        passed = action.passCount
-                        failed = action.failCount
-                    }
-                } catch (e) {
-                    echo "Failed to read test results: ${e.message}"
-                }
-
+                def total = env.TEST_TOTAL ?: 'N/A'
+                def passed = env.TEST_PASSED ?: 'N/A'
+                def failed = env.TEST_FAILED ?: 'N/A'
                 def status = currentBuild.result ?: 'SUCCESS'
                 def color = (status == 'SUCCESS') ? 'green' : 'red'
                 def branch = env.MY_BRANCH ?: 'main'
