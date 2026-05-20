@@ -1,5 +1,3 @@
-def testResult = null
-
 pipeline {
     agent any
 
@@ -13,6 +11,9 @@ pipeline {
             steps {
                 echo 'Pulling code from Git...'
                 checkout scm
+                script {
+                    env.MY_BRANCH = env.GIT_BRANCH?.replace('origin/', '') ?: 'main'
+                }
             }
         }
 
@@ -33,9 +34,7 @@ pipeline {
         stage('Publish Results') {
             steps {
                 echo 'Publishing test report...'
-                script {
-                    testResult = junit 'test-results.xml'
-                }
+                junit 'test-results.xml'
             }
         }
     }
@@ -44,19 +43,30 @@ pipeline {
         always {
             echo 'Tests finished.'
             script {
-                def total = testResult?.totalCount ?: 'N/A'
-                def passed = testResult?.passCount ?: 'N/A'
-                def failed = testResult?.failCount ?: 'N/A'
+                def total = 'N/A'
+                def passed = 'N/A'
+                def failed = 'N/A'
+                try {
+                    def action = currentBuild.rawBuild.getAction(hudson.tasks.junit.TestResultAction.class)
+                    if (action != null) {
+                        total = action.totalCount
+                        passed = action.passCount
+                        failed = action.failCount
+                    }
+                } catch (e) {
+                    echo "Failed to read test results: ${e.message}"
+                }
 
                 def status = currentBuild.result ?: 'SUCCESS'
                 def color = (status == 'SUCCESS') ? 'green' : 'red'
+                def branch = env.MY_BRANCH ?: 'main'
 
                 def msg = """\
                     |# ${env.JOB_NAME} - 构建 #${env.BUILD_NUMBER}
                     |
                     |> 状态: <font color="${color}">${status}</font>
                     |> 总计: **${total}** | 通过: **${passed}** | 失败: **${failed}**
-                    |> 分支: ${env.BRANCH_NAME}
+                    |> 分支: ${branch}
                     |> [查看详情](${env.BUILD_URL})
                     """.stripMargin()
 
